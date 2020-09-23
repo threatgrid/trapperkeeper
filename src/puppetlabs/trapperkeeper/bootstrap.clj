@@ -1,16 +1,19 @@
 (ns puppetlabs.trapperkeeper.bootstrap
-  (:import (java.io FileNotFoundException)
-           (java.net URI URISyntaxException))
-  (:require [clojure.string :as string]
+  (:require
             [clojure.java.io :as io]
+   [clojure.string :as string]
             [clojure.tools.logging :as log]
+   [me.raynes.fs :as fs]
+   [puppetlabs.i18n.core :as i18n]
+   [puppetlabs.trapperkeeper.util :refer [protocol]]
+   [puppetlabs.trapperkeeper.common :as common]
             [puppetlabs.trapperkeeper.internal :as internal]
             [puppetlabs.trapperkeeper.services :as services]
-            [puppetlabs.trapperkeeper.common :as common]
             [schema.core :as schema]
-            [me.raynes.fs :as fs]
-            [slingshot.slingshot :refer [try+ throw+]]
-            [puppetlabs.i18n.core :as i18n]))
+   [slingshot.slingshot :refer [throw+ try+]])
+  (:import
+   (java.io FileNotFoundException)
+   (java.net URI URISyntaxException)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Schemas
@@ -175,8 +178,8 @@
   "Returns an IllegalArgumentException describing what services implement
    the same protocol, including the line number and file the bootstrap entries
    were found"
-  [duplicate-services :- {schema/Keyword [(schema/protocol services/ServiceDefinition)]}
-   service->entry-map :- {(schema/protocol services/ServiceDefinition) AnnotatedBootstrapEntry}]
+  [duplicate-services :- {schema/Keyword [(protocol services/ServiceDefinition)]}
+   service->entry-map :- {(protocol services/ServiceDefinition) AnnotatedBootstrapEntry}]
   (let [make-error-message (fn [service]
                              (let [entry (get service->entry-map service)]
                                (i18n/trs "{0}:{1}\n{2}" (:bootstrap-file entry) (:line-number entry) (:entry entry))))]
@@ -188,7 +191,7 @@
 
 (schema/defn check-duplicate-service-implementations!
   "Throws an exception if two services implement the same service protocol"
-  [services :- [(schema/protocol services/ServiceDefinition)]
+  [services :- [(protocol services/ServiceDefinition)]
    bootstrap-entries :- [AnnotatedBootstrapEntry]]
 
   ; Zip up the services and bootstrap entries and construct a map out of them
@@ -200,7 +203,7 @@
       (when (not (empty? duplicates))
         (throw (duplicate-protocol-error duplicates service->entry-map))))))
 
-(schema/defn ^:private resolve-service! :- (schema/protocol services/ServiceDefinition)
+(schema/defn ^:private resolve-service! :- (protocol services/ServiceDefinition)
   "Given the namespace and name of a service, loads the namespace,
   calls the function, validates that the result is a valid service definition, and
   returns the service definition.  Throws an `IllegalArgumentException` if the
@@ -229,7 +232,7 @@
     (i18n/trs "Problem loading service ''{0}'' from {1}:{2}:\n{3}"
               entry bootstrap-file line-number original-message)))
 
-(schema/defn resolve-and-handle-errors! :- (schema/maybe (schema/protocol services/ServiceDefinition))
+(schema/defn resolve-and-handle-errors! :- (schema/maybe (protocol services/ServiceDefinition))
   "Attempts to resolve a bootstrap entry into a ServiceDefinition.
   If the bootstrap entry can't be resolved, logs a warning and returns nil.
 
@@ -247,7 +250,7 @@
     (catch [:type ::bootstrap-parse-error] {:keys [message]}
       (throw (bootstrap-error entry bootstrap-file line-number message)))))
 
-(schema/defn resolve-services! :- [(schema/protocol services/ServiceDefinition)]
+(schema/defn resolve-services! :- [(protocol services/ServiceDefinition)]
   "Resolves each bootstrap entry into an instance of a trapperkeeper
   ServiceDefinition.
 
@@ -287,7 +290,7 @@
 ;; Public
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(schema/defn parse-bootstrap-configs! :- [(schema/protocol services/ServiceDefinition)]
+(schema/defn parse-bootstrap-configs! :- [(protocol services/ServiceDefinition)]
   "Parse multiple trapperkeeper bootstrap configuration files and return the
   service graph that is the result of merging the graphs of all of the
   services specified in the configuration files."
@@ -306,7 +309,7 @@
       (check-duplicate-service-implementations! resolved-services bootstrap-entries)
       resolved-services)))
 
-(schema/defn parse-bootstrap-config! :- [(schema/protocol services/ServiceDefinition)]
+(schema/defn parse-bootstrap-config! :- [(protocol services/ServiceDefinition)]
   "Parse a single bootstrap configuration file and return the service graph
   that is the result of merging the graphs of all the services specified in the
   configuration file"

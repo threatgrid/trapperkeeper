@@ -93,6 +93,7 @@ There is a protocol that represents a Trapperkeeper application:
 ```clj
 (defprotocol TrapperkeeperApp
   "Functions available on a Trapperkeeper application instance"
+  :extend-via-metadata true
   (app-context [this] "Returns the application context for this app (an atom containing a map)")
   (check-for-errors! [this] (str "Check for any errors which have occurred in "
                                    "the bootstrap process.  If any have "

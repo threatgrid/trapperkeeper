@@ -37,6 +37,7 @@ The shutdown service provides two functions that can be injected into other serv
 
 ```clj
 (defprotocol ShutdownService
+  :extend-via-metadata true
   (request-shutdown [this] "Asynchronously trigger normal shutdown")
   (shutdown-on-error [this service-id f] [this service-id f on-error]
     "Higher-order function to execute application logic and trigger shutdown in

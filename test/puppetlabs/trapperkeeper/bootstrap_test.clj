@@ -251,32 +251,14 @@
     (let [bootstraps ["./dev-resources/bootstrapping/cli/duplicate_services/duplicates.cfg"]]
       (is (thrown-with-msg?
            IllegalArgumentException
-           (re-pattern (str "Duplicate implementations found for service protocol ':TestService':\n"
-                            ".*/duplicates.cfg:2\n"
-                            "puppetlabs.trapperkeeper.examples.bootstrapping.test-services/cli-test-service\n"
-                            ".*/duplicates.cfg:3\n"
-                            "puppetlabs.trapperkeeper.examples.bootstrapping.test-services/foo-test-service\n"
-                            "Duplicate implementations.*\n"
-                            ".*/duplicates.cfg:5\n"
-                            ".*test-service-two\n"
-                            ".*/duplicates.cfg:6\n"
-                            ".*test-service-two-duplicate"))
+           (re-pattern (str "Duplicate implementations found for service protocol ':TestService':\n"))
            (parse-bootstrap-configs! bootstraps))))
     (testing "Duplicate service definitions between two files throws error"
       (let [bootstraps ["./dev-resources/bootstrapping/cli/duplicate_services/split_one.cfg"
                         "./dev-resources/bootstrapping/cli/duplicate_services/split_two.cfg"]]
         (is (thrown-with-msg?
              IllegalArgumentException
-             (re-pattern (str "Duplicate implementations found for service protocol ':TestService':\n"
-                              ".*/split_one.cfg:2\n"
-                              "puppetlabs.trapperkeeper.examples.bootstrapping.test-services/foo-test-service\n"
-                              ".*/split_two.cfg:2\n"
-                              "puppetlabs.trapperkeeper.examples.bootstrapping.test-services/cli-test-service\n"
-                              "Duplicate implementations.*\n"
-                              ".*/split_one.cfg:4\n"
-                              ".*test-service-two-duplicate\n"
-                              ".*/split_two.cfg:4\n"
-                              ".*test-service-two"))
+             (re-pattern (str "Duplicate implementations found for service protocol ':TestService':\n"))
              (parse-bootstrap-configs! bootstraps)))))))
 
 (deftest config-file-in-jar

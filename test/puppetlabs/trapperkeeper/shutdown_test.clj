@@ -15,9 +15,11 @@
 
 (use-fixtures :once with-no-jvm-shutdown-hooks schema-test/validate-schemas)
 
-(defprotocol ShutdownTestService)
+(defprotocol ShutdownTestService
+  :extend-via-metadata true)
 
 (defprotocol ShutdownTestServiceWithFn
+  :extend-via-metadata true
   (test-fn [this]))
 
 (deftest shutdown-test

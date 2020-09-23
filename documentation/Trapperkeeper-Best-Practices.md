@@ -20,6 +20,7 @@ In general, it's a good idea to keep the code that implements your business logi
 
 ```clj
 (defprotocol CalculatorService
+   :extend-via-metadata true
    (add [this x y]))
 
 (defservice calculator-service
@@ -40,6 +41,7 @@ This is better:
    (:require calculator.core :as core))
 
 (defprotocol CalculatorService
+   :extend-via-metadata true
    (add [this x y]))
 
 (defservice calculator-service

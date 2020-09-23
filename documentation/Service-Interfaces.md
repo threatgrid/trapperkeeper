@@ -10,6 +10,7 @@ Here's a concrete example of how this might work:
 (ns services.foo)
 
 (defprotocol FooService
+  :extend-via-metadata true
   (foo [this]))
 
 (ns services.foo.lowercase-foo
@@ -33,6 +34,7 @@ Here's a concrete example of how this might work:
 (ns services.foo-consumer)
 
 (defprotocol FooConsumer
+  :extend-via-metadata true
   (bar [this]))
 
 (defservice foo-consumer

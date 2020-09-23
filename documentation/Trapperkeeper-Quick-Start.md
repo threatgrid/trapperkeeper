@@ -24,6 +24,7 @@ First, you need to define one or more services:
 
 ;; A protocol that defines what functions our service will provide
 (defprotocol HelloService
+  :extend-via-metadata true
   (hello [this])
 
 (defservice hello-service

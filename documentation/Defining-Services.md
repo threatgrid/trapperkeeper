@@ -18,6 +18,7 @@ The service `Lifecycle` protocol looks like this:
 
 ```clj
 (defprotocol Lifecycle
+  :extend-via-metadata true
   (init [this context])
   (start [this context])
   (stop [this context]))
@@ -39,6 +40,7 @@ Let's look at a concrete example:
 ;; This is the list of functions that the `FooService` must implement, and which
 ;; are available to other services who have a dependency on `FooService`.
 (defprotocol FooService
+  :extend-via-metadata true
   (foo1 [this x])
   (foo2 [this])
   (foo3 [this x]))
@@ -99,6 +101,7 @@ Clojure's protocols allow you to define multi-arity functions:
 
 ```clj
 (defprotocol MultiArityService
+   :extend-via-metadata true
    (foo [this x] [this x y]))
 ```
 
@@ -124,6 +127,7 @@ Trapperkeeper services can use the syntax from clojure's `reify` to implement th
      context))
 
 (defprotocol AnotherService
+   :extend-via-metadata true
    (foo [this]))
 ```
 
@@ -137,8 +141,10 @@ To mark a dependency as optional, you use a different form to specify your depen
 
 ```clj
 (defprotocol HaikuService
+  :extend-via-metadata true
   (get-haiku [this] "return a lovely haiku"))
 (defprotocol SonnetService
+  :extend-via-metadata true
   (get-sonnet [this] "return a lovely sonnet"))
 
 ;; ... snip the definitions of HaikuService and SonnetService ...

@@ -8,12 +8,15 @@
 (use-fixtures :once schema-test/validate-schemas)
 
 (defprotocol HaikuService
+  :extend-via-metadata true
   (haiku [this topic]))
 
 (defprotocol SonnetService
+  :extend-via-metadata true
   (sonnet [this topic couplet]))
 
 (defprotocol PoetryService
+  :extend-via-metadata true
   (get-haiku [this])
   (get-sonnet [this]))
 
