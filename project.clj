@@ -1,4 +1,4 @@
-(defproject threatgrid/trapperkeeper "3.1.0"
+(defproject threatgrid/trapperkeeper "3.2.0"
   :description "A framework for configuring, composing, and running Clojure services."
 
   :license {:name "Apache License, Version 2.0"
