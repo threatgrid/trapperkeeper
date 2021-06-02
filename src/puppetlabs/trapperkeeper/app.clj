@@ -1,15 +1,18 @@
 (ns puppetlabs.trapperkeeper.app
-  (:require [schema.core :as schema]
+  (:require
+   [clojure.core.async.impl.protocols :as async-prot]
             [puppetlabs.trapperkeeper.services :as s]
-            [clojure.core.async.impl.protocols :as async-prot])
-  (:import (clojure.lang IDeref)))
+   [puppetlabs.trapperkeeper.util :refer [protocol]]
+   [schema.core :as schema])
+  (:import
+   (clojure.lang IDeref)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
 (def TrapperkeeperAppOrderedServices
   [[(schema/one schema/Keyword "service-id")
-    (schema/one (schema/protocol s/Service) "Service")]])
+    (schema/one (protocol s/Service) "Service")]])
 
 (def TrapperkeeperAppContext
   "Schema for a Trapperkeeper application's internal context.  NOTE: this schema
@@ -17,10 +20,10 @@
   releases."
   {:service-contexts {schema/Keyword {schema/Any schema/Any}}
    :ordered-services TrapperkeeperAppOrderedServices
-   :services-by-id {schema/Keyword (schema/protocol s/Service)}
-   :lifecycle-channel (schema/protocol async-prot/Channel)
-   :shutdown-channel (schema/protocol async-prot/Channel)
-   :lifecycle-worker (schema/protocol async-prot/Channel)
+   :services-by-id          {schema/Keyword (protocol s/Service)}
+   :lifecycle-channel       (protocol async-prot/Channel)
+   :shutdown-channel        (protocol async-prot/Channel)
+   :lifecycle-worker        (protocol async-prot/Channel)
    :shutdown-reason-promise IDeref})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28,6 +31,7 @@
 
 (defprotocol TrapperkeeperApp
   "Functions available on a trapperkeeper application instance"
+  :extend-via-metadata true
   (get-service [this service-id] "Returns the service with the given service id")
   (service-graph [this] "Returns the prismatic graph of service fns for this app")
   (app-context [this] "Returns the application context for this app (an atom containing a map)")

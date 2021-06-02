@@ -45,6 +45,7 @@ In some cases you may actually prefer to get a reference to an object that satis
 (ns bar.service)
 
 (defprotocol BarService
+   :extend-via-metadata true
    (bar-fn [this]))
 
 ...

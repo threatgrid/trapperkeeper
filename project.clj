@@ -1,4 +1,4 @@
-(defproject puppetlabs/trapperkeeper "3.0.0"
+(defproject threatgrid/trapperkeeper "3.2.0"
   :description "A framework for configuring, composing, and running Clojure services."
 
   :license {:name "Apache License, Version 2.0"
@@ -12,11 +12,12 @@
   ;; Abort when version ranges or version conflicts are detected in
   ;; dependencies. Also supports :warn to simply emit warnings.
   ;; requires lein 2.2.0+.
-  :pedantic? :abort
-  :dependencies [[org.clojure/clojure]
+  :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/tools.logging]
                  [org.clojure/tools.macro]
                  [org.clojure/core.async]
+
+                 [com.nedap.staffing-solutions/speced.def "2.0.0"]
 
                  [org.slf4j/log4j-over-slf4j]
                  [ch.qos.logback/logback-classic]

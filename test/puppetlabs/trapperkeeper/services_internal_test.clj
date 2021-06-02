@@ -58,7 +58,8 @@
    'puppetlabs.trapperkeeper.services-internal-test
    sym))
 
-(defprotocol EmptyProtocol)
+(defprotocol EmptyProtocol
+  :extend-via-metadata true)
 (def NonProtocolSym "hi")
 
 (deftest protocol-syms-test
@@ -91,12 +92,15 @@
                               (foo [this] "foo")))))))
 
 (defprotocol Service1
+  :extend-via-metadata true
   (service1-fn [this]))
 
 (defprotocol Service2
+  :extend-via-metadata true
   (service2-fn [this]))
 
 (defprotocol BadServiceProtocol
+  :extend-via-metadata true
   (start [this]))
 
 (deftest invalid-fns-test
@@ -174,7 +178,8 @@
         (is (= provides {:service2-fn IFn}))
         (is (= "Bar!" (s2-fn)))))))
 
-(defprotocol EmptyService)
+(defprotocol EmptyService
+  :extend-via-metadata true)
 
 (deftest explicit-service-symbol-test
   (testing "can explicitly pass `service` a service symbol via internal API"

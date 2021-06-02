@@ -15,6 +15,7 @@
 (use-fixtures :each schema-test/validate-schemas logging/reset-logging-config-after-test)
 
 (defprotocol FooService
+  :extend-via-metadata true
   (foo [this]))
 
 (deftest dependency-error-handling

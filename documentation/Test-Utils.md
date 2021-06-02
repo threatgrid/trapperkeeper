@@ -111,6 +111,7 @@ This macro allows you to specify the services you want to launch directly and to
 (ns services.test-service-1)
 
 (defprotocol TestService1
+  :extend-via-metadata true
   (test-fn [this]))
 
 (defservice test-service1

@@ -6,15 +6,19 @@
   {:test-service "hi"})
 
 (defprotocol HelloWorldService
+  :extend-via-metadata true
   (hello-world [this]))
 
 (defprotocol TestService
+  :extend-via-metadata true
   (test-fn [this]))
 
 (defprotocol TestServiceTwo
+  :extend-via-metadata true
   (test-fn-two [this]))
 
 (defprotocol TestServiceThree
+  :extend-via-metadata true
   (test-fn-three [this]))
 
 (defservice hello-world-service

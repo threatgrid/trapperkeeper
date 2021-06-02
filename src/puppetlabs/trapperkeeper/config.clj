@@ -35,6 +35,7 @@
 ;;; Service protocol
 
 (defprotocol ConfigService
+  :extend-via-metadata true
   (get-config [this] "Returns a map containing all of the configuration values")
   (get-in-config [this ks] [this ks default]
     "Returns the individual configuration value from the nested

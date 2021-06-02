@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]))
 
 (defprotocol JavaService
+  :extend-via-metadata true
   (msg-fn [this])
   (meaning-of-life-fn [this]))
 

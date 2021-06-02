@@ -1,26 +1,27 @@
 (ns puppetlabs.trapperkeeper.services-test
-  (:require [clojure.test :refer :all]
-            [puppetlabs.trapperkeeper.services :refer
-             [defservice service] :as svcs]
-            [puppetlabs.trapperkeeper.app :as app]
+  (:require
+   [clojure.test :refer :all]
+   [me.raynes.fs :as fs]
+   [nedap.speced.def :as speced]
             [puppetlabs.kitchensink.core :as kitchensink]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :refer
-             [bootstrap-services-with-empty-config
-              with-app-with-empty-config
-              with-app-with-config]]
-            [schema.test :as schema-test]
+   [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.kitchensink.testutils.fixtures :refer [with-no-jvm-shutdown-hooks]]
-            [puppetlabs.trapperkeeper.internal :as internal]
+   [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.core :as tk]
-            [puppetlabs.kitchensink.testutils :as ks-testutils]
-            [me.raynes.fs :as fs])
-  (:import (java.util.concurrent ExecutionException)))
+   [puppetlabs.trapperkeeper.internal :as internal]
+   [puppetlabs.trapperkeeper.services :as svcs :refer [defservice service]]
+   [puppetlabs.trapperkeeper.testutils.bootstrap :refer [bootstrap-services-with-empty-config with-app-with-config with-app-with-empty-config]]
+   [schema.test :as schema-test])
+  (:import
+   (java.util.concurrent ExecutionException)))
 
 (use-fixtures :once schema-test/validate-schemas with-no-jvm-shutdown-hooks)
 
-(defprotocol EmptyService)
+(defprotocol EmptyService
+  :extend-via-metadata true)
 
 (defprotocol HelloService
+  :extend-via-metadata true
   (hello [this msg]))
 
 (defservice hello-service
@@ -32,28 +33,31 @@
 
 (deftest test-satisfies-protocols
   (testing "creates a service definition"
-    (is (satisfies? svcs/ServiceDefinition hello-service)))
+    (is (speced/satisfies? svcs/ServiceDefinition hello-service)))
 
   (let [app (bootstrap-services-with-empty-config [hello-service])]
     (testing "app satisfies protocol"
-      (is (satisfies? app/TrapperkeeperApp app)))
+      (is (speced/satisfies? app/TrapperkeeperApp app)))
 
     (let [h-s (app/get-service app :HelloService)]
       (testing "service satisfies all protocols"
-        (is (satisfies? svcs/Lifecycle h-s))
-        (is (satisfies? svcs/Service h-s))
-        (is (satisfies? HelloService h-s)))
+        (is (speced/satisfies? svcs/Lifecycle h-s))
+        (is (speced/satisfies? svcs/Service h-s))
+        (is (speced/satisfies? HelloService h-s)))
 
       (testing "service functions behave as expected"
         (is (= "HELLO!: yo" (hello h-s "yo")))))))
 
 (defprotocol Service1
+  :extend-via-metadata true
   (service1-fn [this]))
 
 (defprotocol Service2
+  :extend-via-metadata true
   (service2-fn [this]))
 
 (defprotocol Service3
+  :extend-via-metadata true
   (service3-fn [this]))
 
 (deftest test-services-not-required
@@ -167,7 +171,6 @@
               :start-service1 :start-service2 :start-service3
               :stop-service3 :stop-service2 :stop-service1]
              @call-seq))
-
 
       (reset! call-seq [])
       (with-app-with-empty-config app
@@ -340,7 +343,7 @@
           app               (bootstrap-services-with-empty-config [service1 service2])
           s2                (app/get-service app :Service2)
           s1                (service2-fn s2)]
-      (is (satisfies? Service1 s1))
+      (is (speced/satisfies? Service1 s1))
       (is (= "FOO!" (service1-fn s1)))))
 
   (testing "an error should be thrown if calling get-service on a non-existent service"
@@ -370,6 +373,7 @@
       (is (= "FOO!" (service2-fn s2))))))
 
 (defprotocol Service4
+  :extend-via-metadata true
   (service4-fn1 [this])
   (service4-fn2 [this]))
 
@@ -517,7 +521,7 @@
           (doseq [s [empty hello]]
             (let [all-services (svcs/get-services s)]
               (is (= 2 (count all-services)))
-              (is (every? #(satisfies? svcs/Service %) all-services))
+              (is (every? #(speced/satisfies? svcs/Service %) all-services))
               (is (= #{:EmptyService :HelloService}
                      (set (map svcs/service-id all-services)))))))))))
 
@@ -548,6 +552,7 @@
       (is (= "hi" @result)))))
 
 (defprotocol MultiArityService
+  :extend-via-metadata true
   (foo [this x] [this x y]))
 
 (deftest test-multi-arity-protocol-fn

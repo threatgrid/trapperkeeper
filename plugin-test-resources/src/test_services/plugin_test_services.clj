@@ -18,6 +18,7 @@
   (:require [puppetlabs.trapperkeeper.core :refer [defservice]]))
 
 (defprotocol PluginTestService
+  :extend-via-metadata true
   (moo [this]))
 
 (defservice plugin-test-service

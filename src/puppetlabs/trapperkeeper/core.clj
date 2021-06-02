@@ -1,16 +1,19 @@
 (ns puppetlabs.trapperkeeper.core
-  (:require [clojure.tools.logging :as log]
-            [slingshot.slingshot :refer [try+ throw+]]
+  (:require
+   [clojure.tools.logging :as log]
+   [nedap.speced.def :as speced]
+   [puppetlabs.i18n.core :as i18n]
             [puppetlabs.kitchensink.core :refer [without-ns]]
-            [puppetlabs.trapperkeeper.services :as services]
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.bootstrap :as bootstrap]
-            [puppetlabs.trapperkeeper.internal :as internal]
+   [puppetlabs.trapperkeeper.common :as common]
             [puppetlabs.trapperkeeper.config :as config]
+   [puppetlabs.trapperkeeper.util :refer [protocol]]
+   [puppetlabs.trapperkeeper.internal :as internal]
             [puppetlabs.trapperkeeper.plugins :as plugins]
+   [puppetlabs.trapperkeeper.services :as services]
             [schema.core :as schema]
-            [puppetlabs.trapperkeeper.common :as common]
-            [puppetlabs.i18n.core :as i18n]))
+   [slingshot.slingshot :refer [throw+ try+]]))
 
 (def #^{:macro true
         :doc "An alias for the `puppetlabs.trapperkeeper.services/service` macro
@@ -37,14 +40,14 @@
   `start`, and then `run-app`."
   [services config-data]
   {:pre  [(sequential? services)
-          (every? #(satisfies? services/ServiceDefinition %) services)
+          (every? #(speced/satisfies? services/ServiceDefinition %) services)
           (ifn? config-data)]
-   :post [(satisfies? app/TrapperkeeperApp %)]}
+   :post [(speced/satisfies? app/TrapperkeeperApp %)]}
   (let [config-data-fn (if (map? config-data) (constantly config-data) config-data)]
     (config/initialize-logging! (config-data-fn))
     (internal/build-app* services config-data-fn)))
 
-(schema/defn boot-services-with-cli-data :- (schema/protocol app/TrapperkeeperApp)
+(schema/defn boot-services-with-cli-data :- (protocol app/TrapperkeeperApp)
   "Given a list of ServiceDefinitions and a map containing parsed cli data, create
   and boot a trapperkeeper app.  This function can be used if you prefer to
   do your own CLI parsing and loading ServiceDefinitions; it circumvents
@@ -53,7 +56,7 @@
 
   Returns a TrapperkeeperApp instance.  Call `run-app` on it if you'd like to
   block the main thread to wait for a shutdown event."
-  [services :- [(schema/protocol services/ServiceDefinition)]
+  [services :- [(protocol services/ServiceDefinition)]
    cli-data :- common/CLIData]
   (let [config-data-fn #(config/parse-config-data cli-data)]
     (config/initialize-logging! (config-data-fn))
@@ -71,9 +74,9 @@
   block the main thread to wait for a shutdown event."
   [services config-data-fn]
   {:pre  [(sequential? services)
-          (every? #(satisfies? services/ServiceDefinition %) services)
+          (every? #(speced/satisfies? services/ServiceDefinition %) services)
           (ifn? config-data-fn)]
-   :post [(satisfies? app/TrapperkeeperApp %)]}
+   :post [(speced/satisfies? app/TrapperkeeperApp %)]}
   (config/initialize-logging! (config-data-fn))
   (internal/boot-services* services config-data-fn))
 
@@ -88,12 +91,12 @@
   block the main thread to wait for a shutdown event."
   [services config-data]
   {:pre  [(sequential? services)
-          (every? #(satisfies? services/ServiceDefinition %) services)
+          (every? #(speced/satisfies? services/ServiceDefinition %) services)
           (map? config-data)]
-   :post [(satisfies? app/TrapperkeeperApp %)]}
+   :post [(speced/satisfies? app/TrapperkeeperApp %)]}
   (boot-services-with-config-fn services (constantly config-data)))
 
-(schema/defn boot-with-cli-data :- (schema/protocol app/TrapperkeeperApp)
+(schema/defn boot-with-cli-data :- (protocol app/TrapperkeeperApp)
   "Create and boot a trapperkeeper application.  This is accomplished by reading a
   bootstrap configuration file containing a list of (namespace-qualified)
   service functions.  These functions will be called to generate a service
@@ -135,7 +138,7 @@
   which may be triggered by one of several different ways. In all cases, services
   will be shut down and any exceptions they might throw will be caught and logged."
   [app]
-  {:pre [(satisfies? app/TrapperkeeperApp app)]}
+  {:pre [(speced/satisfies? app/TrapperkeeperApp app)]}
   (let [shutdown-reason (internal/wait-for-app-shutdown app)]
     (when (internal/initiated-internally? shutdown-reason)
       (internal/call-error-handler! shutdown-reason)

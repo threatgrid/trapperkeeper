@@ -1,15 +1,15 @@
 (ns puppetlabs.trapperkeeper.services
-  (:require [clojure.set :refer [difference]]
+  (:require
             [plumbing.core :refer [fnk]]
-            [puppetlabs.kitchensink.core :refer [select-values keyset]]
+   [puppetlabs.i18n.core :as i18n]
             [puppetlabs.trapperkeeper.services-internal :as si]
-            [schema.core :as schema]
-            [puppetlabs.i18n.core :as i18n]))
+   [schema.core :as schema]))
 
 (defprotocol Lifecycle
   "Lifecycle functions for a service.  All services satisfy this protocol, and
   the lifecycle functions for each service will be called at the appropriate
   phase during the application lifecycle."
+  :extend-via-metadata true
   (init [this context] "Initialize the service, given a context map.
                         Must return the (possibly modified) context map.")
   (start [this context] "Start the service, given a context map.
@@ -19,6 +19,7 @@
 
 (defprotocol Service
   "Common functions available to all services"
+  :extend-via-metadata true
   (service-id [this] "An identifier for the service")
   (service-context [this] "Returns the context map for this service")
   (get-service [this service-id] "Returns the service with the given service id. Throws if service not present")
@@ -31,6 +32,7 @@
 (defprotocol ServiceDefinition
   "A service definition.  This protocol is for internal use only.  The service
   is not usable until it is instantiated (via `boot!`)."
+  :extend-via-metadata true
   (service-def-id [this] "An identifier for the service")
   (service-map [this] "The map of service functions for the graph"))
 
@@ -59,6 +61,20 @@
                                      attr)]
     [(with-meta name attr) macro-args]))
 
+(defn group-sigs [prefix sigs]
+  (->> sigs
+       (map (fn [[method-name :as sig]]
+              [(list 'quote (symbol prefix
+                                    (str method-name)))
+               sig]))
+       (group-by first)
+       (mapcat (fn [[prefix sigs]]
+                 [prefix
+                  (->> sigs
+                       (map second)
+                       (map rest)
+                       (apply list 'fn))]))))
+
 (defmacro service
   "Create a Trapperkeeper ServiceDefinition.
 
@@ -75,6 +91,7 @@
   in the format that is used by a normal clojure `reify`.  The legal list of functions
   that may be specified includes whatever functions are defined by this service's
   protocol (if it has one), plus the list of functions in the `Lifecycle` protocol."
+  {:style.cljfmt/indent [[:inner 0] [:inner 1]]}
   [& forms]
   (let [{:keys [service-sym service-protocol-sym service-id service-fn-map
                 dependencies fns-map]}
@@ -82,47 +99,51 @@
          lifecycle-fn-names
          forms)
         output-schema (si/build-output-schema (keys service-fn-map))]
-    `(reify ServiceDefinition
-       (service-def-id [this] ~service-id)
+    `(with-meta {:type ::ServiceDefinition
+                 :ns   (-> *ns* str keyword)
+                 :id   ~service-id}
+       {`service-def-id (fn [~'this] ~service-id)
        ;; service map for prismatic graph
-       (service-map [this]
+        `service-map    (fn [~'this]
          {~service-id
           ;; the main service fnk for the app graph.  we add metadata to the fnk
           ;; arguments list to specify an explicit output schema for the fnk
           (fnk service-fnk# :- ~output-schema
             ~(conj dependencies 'tk-app-context 'tk-service-refs)
-            (let [svc# (reify
-                         Service
-                         (service-id [this#] ~service-id)
-                         (service-context [this#] (get-in ~'@tk-app-context [:service-contexts ~service-id] {}))
-                         (get-service [this# service-id#]
+                                (let [svc# (with-meta {:type ::Service
+                                                       :ns   (-> *ns* str keyword)
+                                                       :id   ~service-id}
+                                             {`service-id        (fn [this#] ~service-id)
+                                              `service-context   (fn [this#] (get-in ~'@tk-app-context [:service-contexts ~service-id] {}))
+                                              `get-service       (fn [this# service-id#]
                            (or (get-in ~'@tk-app-context [:services-by-id service-id#])
                                (throw (IllegalArgumentException.
                                         (i18n/trs "Call to ''get-service'' failed; service ''{0}'' does not exist."
                                           service-id#)))))
-                         (maybe-get-service [this# service-id#]
+                                              `maybe-get-service (fn [this# service-id#]
                            (get-in ~'@tk-app-context [:services-by-id service-id#] nil))
-                         (get-services [this#]
+                                              `get-services      (fn [this#]
                            (-> ~'@tk-app-context
                                :services-by-id
                                (dissoc :ConfigService :ShutdownService)
                                vals))
-                         (service-symbol [this#] '~service-sym)
-                         (service-included? [this# service-id#]
+                                              `service-symbol    (fn [this#] '~service-sym)
+                                              `service-included? (fn [this# service-id#]
                            (not (nil? (get-in ~'@tk-app-context [:services-by-id service-id#] nil))))
 
-                         Lifecycle
-                         ~@(si/fn-defs fns-map lifecycle-fn-names)
+                                              ~@(->> (si/fn-defs fns-map lifecycle-fn-names)
+                                                     (group-sigs (namespace ::_)))
 
                          ~@(if service-protocol-sym
-                             `(~service-protocol-sym
-                                ~@(si/fn-defs fns-map (vals service-fn-map)))))]
+                                                  (->> (si/fn-defs fns-map (vals service-fn-map))
+                                                       (group-sigs (-> service-protocol-sym resolve meta :ns str)))
+                                                  [])})]
               (swap! ~'tk-service-refs assoc ~service-id svc#)
-              (si/build-service-map ~service-fn-map svc#)))}))))
+                                  (si/build-service-map ~service-fn-map svc#)))})})))
 
 (defmacro defservice
+  {:style.cljfmt/indent [[:block 1] [:inner 1]]}
   [svc-name & forms]
   (let [service-sym      (symbol (name (ns-name *ns*)) (name svc-name))
         [svc-name forms] (name-with-attributes svc-name forms)]
     `(def ~svc-name (service {:service-symbol ~service-sym} ~@forms))))
-

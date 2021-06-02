@@ -1,20 +1,24 @@
 (ns puppetlabs.trapperkeeper.internal
-  (:import (clojure.lang ExceptionInfo IFn IDeref)
-           (java.lang ArithmeticException NumberFormatException))
-  (:require [clojure.tools.logging :as log]
+  (:require
             [beckon]
+   [clojure.core.async :as async]
+   [clojure.core.async.impl.protocols :as async-prot]
+   [clojure.tools.logging :as log]
+   [me.raynes.fs :as fs]
+   [nedap.speced.def :as speced]
             [plumbing.graph :as graph]
-            [slingshot.slingshot :refer [throw+]]
-            [puppetlabs.trapperkeeper.config :refer [config-service get-in-config]]
+   [puppetlabs.i18n.core :as i18n]
+   [puppetlabs.trapperkeeper.util :refer [protocol]]
+   [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.app :as a]
             [puppetlabs.trapperkeeper.common :as common]
+   [puppetlabs.trapperkeeper.config :refer [config-service get-in-config]]
             [puppetlabs.trapperkeeper.services :as s]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.i18n.core :as i18n]
             [schema.core :as schema]
-            [clojure.core.async :as async]
-            [clojure.core.async.impl.protocols :as async-prot]
-            [me.raynes.fs :as fs]))
+   [slingshot.slingshot :refer [throw+]])
+  (:import
+   (clojure.lang ExceptionInfo IDeref IFn)
+   (java.lang ArithmeticException NumberFormatException)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Schemas
@@ -70,8 +74,8 @@
   Returns the service definition on success; throws an ::invalid-service-graph
   if the graph is invalid."
   [service-def]
-  {:post [(satisfies? s/ServiceDefinition %)]}
-  (if-not (satisfies? s/ServiceDefinition service-def)
+  {:post [(speced/satisfies? s/ServiceDefinition %)]}
+  (if-not (speced/satisfies? s/ServiceDefinition service-def)
     (throw+ {:type ::invalid-service-graph
              :message (i18n/trs "Invalid service definition; expected a service definition (created via `service` or `defservice`); found: {0}" (pr-str service-def))}))
   (if (service-graph? (s/service-map service-def))
@@ -156,7 +160,6 @@
     (catch ExceptionInfo e
       (handle-prismatic-exception! e))))
 
-
 (schema/defn parse-cli-args! :- common/CLIData
   "Parses the command-line arguments using `puppetlabs.kitchensink.core/cli!`.
   Hard-codes the command-line arguments expected by trapperkeeper to be:
@@ -190,7 +193,7 @@
    lifecycle-fn :- IFn
    lifecycle-fn-name :- schema/Str
    service-id :- schema/Keyword
-   s :- (schema/protocol s/Service)]
+   s :- (protocol s/Service)]
   (let [;; call the lifecycle function on the service, and keep a reference
         ;; to the updated context map that it returns
         updated-ctxt  (lifecycle-fn s (get-in @app-context [:service-contexts service-id] {}))]
@@ -238,12 +241,12 @@
       (log/error t (i18n/trs "Error during service {0}!!!" lifecycle-fn-name))
       (throw t))))
 
-(schema/defn ^:always-validate initialize-lifecycle-worker :- (schema/protocol async-prot/Channel)
+(schema/defn ^:always-validate initialize-lifecycle-worker :- (protocol async-prot/Channel)
   "Initializes a 'worker' which will listen for lifecycle-related tasks and perform
   them on a background thread, to ensure that we aren't executing multiple lifecycle
   tasks simultaneously."
-  [lifecycle-channel :- (schema/protocol async-prot/Channel)
-   shutdown-channel :- (schema/protocol async-prot/Channel)
+  [lifecycle-channel :- (protocol async-prot/Channel)
+   shutdown-channel :- (protocol async-prot/Channel)
    shutdown-reason-promise :- IDeref]
   (log/debug (i18n/trs "Initializing lifecycle worker loop."))
   (async/go-loop []
@@ -393,6 +396,7 @@
                                                         (partial on-error-fn (get @app-context svc-id)))})))))
 
 (defprotocol ShutdownService
+  :extend-via-metadata true
   (get-shutdown-reason [this])
   (wait-for-shutdown [this])
   (request-shutdown [this] "Asynchronously trigger normal shutdown")
@@ -450,7 +454,7 @@
       ;; redundant shutdown request was ignored
       (log/trace (i18n/trs "Response from lifecycle worker indicates shutdown already in progress, ignoring additional shutdown attempt.")))))
 
-(schema/defn ^:always-validate initialize-shutdown-service! :- (schema/protocol s/ServiceDefinition)
+(schema/defn ^:always-validate initialize-shutdown-service! :- (protocol s/ServiceDefinition)
   "Initialize the shutdown service and add a shutdown hook to the JVM."
   [app-context :- (schema/atom a/TrapperkeeperAppContext)
    shutdown-reason-promise :- IDeref]
@@ -473,7 +477,7 @@
   * :on-error-fn - An optional error callback associated with the :service-error
                    cause"
   [app]
-  {:pre [(satisfies? a/TrapperkeeperApp app)]
+  {:pre  [(speced/satisfies? a/TrapperkeeperApp app)]
    :post [(or (nil? %) (map? %))]}
   (get-shutdown-reason (a/get-service app :ShutdownService)))
 
@@ -482,7 +486,7 @@
   one is available, throw a Throwable with that error.  If not, just return
   the app instance that was provided."
   [app]
-  {:pre [(satisfies? a/TrapperkeeperApp app)]
+  {:pre  [(speced/satisfies? a/TrapperkeeperApp app)]
    :post [(identical? app %)]}
   (when-let [shutdown-reason (get-app-shutdown-reason app)]
     (if-let [shutdown-error (:error shutdown-reason)]
@@ -498,7 +502,7 @@
   * :error       - The error associated with the :service-error cause
   * :on-error-fn - An optional error callback associated with the :service-error cause"
   [app]
-  {:pre [(satisfies? a/TrapperkeeperApp app)]
+  {:pre  [(speced/satisfies? a/TrapperkeeperApp app)]
    :post [(map? %)]}
   (wait-for-shutdown (a/get-service app :ShutdownService)))
 
@@ -527,10 +531,10 @@
 
 ;;;; end of shutdown-related functions
 
-(schema/defn ^:always-validate build-app* :- (schema/protocol a/TrapperkeeperApp)
+(schema/defn ^:always-validate build-app* :- (protocol a/TrapperkeeperApp)
   "Given a list of services and a map of configuration data, build an instance
   of a TrapperkeeperApp.  Services are not yet initialized or started."
-  [services :- [(schema/protocol s/ServiceDefinition)]
+  [services :- [(protocol s/ServiceDefinition)]
    config-data-fn :- IFn]
   (let [shutdown-reason-promise (promise)
         lifecycle-channel (async/chan max-pending-lifecycle-events)
@@ -603,7 +607,7 @@
   "Boots services for a TK app.  WARNING:  This should only ever be called
   on the lifecycle-worker, presumably via `boot-services-for-app*`"
   [result-promise :- IDeref
-   app :- (schema/protocol a/TrapperkeeperApp)]
+   app :- (protocol a/TrapperkeeperApp)]
   (let [{:keys [shutdown-reason-promise]} @(a/app-context app)]
     (try
       (a/init app)
@@ -613,8 +617,8 @@
                                           :error t})))
     (deliver result-promise app)))
 
-(schema/defn ^:always-validate boot-services-for-app* :- (schema/protocol a/TrapperkeeperApp)
-  [app :- (schema/protocol a/TrapperkeeperApp)]
+(schema/defn ^:always-validate boot-services-for-app* :- (protocol a/TrapperkeeperApp)
+  [app :- (protocol a/TrapperkeeperApp)]
   (let [lifecycle-channel (:lifecycle-channel @(a/app-context app))
         lifecycle-promise (promise)
         boot-fn (partial boot-services-for-app** lifecycle-promise app)]
@@ -623,10 +627,10 @@
     @lifecycle-promise
     app))
 
-(schema/defn ^:always-validate boot-services* :- (schema/protocol a/TrapperkeeperApp)
+(schema/defn ^:always-validate boot-services* :- (protocol a/TrapperkeeperApp)
   "Given the services to run and the map of configuration data, create the
   TrapperkeeperApp and boot the services.  Returns the TrapperkeeperApp."
-  [services :- [(schema/protocol s/ServiceDefinition)]
+  [services :- [(protocol s/ServiceDefinition)]
    config-data-fn :- IFn]
   (let [app                     (try
                                   (build-app* services
@@ -636,5 +640,3 @@
                                     (throw t)))]
     (boot-services-for-app* app)
     app))
-
-

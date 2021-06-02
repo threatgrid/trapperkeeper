@@ -1,8 +1,8 @@
 (ns puppetlabs.trapperkeeper.logging
-  (:import [ch.qos.logback.classic Level PatternLayout]
-           (ch.qos.logback.core ConsoleAppender)
+  (:import #_ [ch.qos.logback.classic Level PatternLayout]
+           #_ (ch.qos.logback.core ConsoleAppender)
            (org.slf4j Logger LoggerFactory)
-           (ch.qos.logback.classic.joran JoranConfigurator))
+           #_ (ch.qos.logback.classic.joran JoranConfigurator))
   (:require [clojure.stacktrace :refer [print-cause-trace]]
             [clojure.tools.logging :as log]
             [puppetlabs.i18n.core :as i18n]))
@@ -36,7 +36,7 @@
    (flush)
    (log/error exception message)))
 
-(defn create-console-appender
+#_ (defn create-console-appender
   "Instantiates and returns a logging appender configured to write to
   the console, using the standard logging configuration.
 
@@ -57,7 +57,7 @@
        (.setLayout layout)
        (.start)))))
 
-(defn add-console-logger!
+#_ (defn add-console-logger!
   "Adds a console logger to the current logging configuration, and ensures
   that the root logger is set to log at the logging level of the new
   logger or finer.
@@ -75,7 +75,7 @@
             (.toInt level))
        (.setLevel root level)))))
 
-(defn configure-logger!
+#_ (defn configure-logger!
   "Reconfigures the current logger based on the supplied configuration.
 
   Supplied configuration can be a file path, url, file, InputStream, or
@@ -100,7 +100,7 @@
    (configure-logging! logging-conf false))
   ([logging-conf debug]
    (when logging-conf
-     (configure-logger! logging-conf))
+     #_ (configure-logger! logging-conf))
    (when debug
-     (add-console-logger! Level/DEBUG)
+     #_ (add-console-logger! Level/DEBUG)
      (log/debug (i18n/trs "Debug logging enabled")))))

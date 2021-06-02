@@ -10,6 +10,7 @@
 (use-fixtures :once schema-test/validate-schemas)
 
 (defprotocol ConfigTestService
+  :extend-via-metadata true
   (test-fn [this ks])
   (test-fn2 [this])
   (get-in-config [this ks] [this ks default]))
