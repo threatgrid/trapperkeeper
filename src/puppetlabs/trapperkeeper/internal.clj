@@ -142,7 +142,16 @@
   (try
     (graph/eager-compile graph-map)
     (catch ExceptionInfo e
-      (handle-prismatic-exception! e))))
+      (handle-prismatic-exception! e))
+    (catch Exception e
+      (if (= "Method code too large!" (.getMessage e))
+        (try
+          (log/error e (str "Error while compiling specialized service graph, trying interpreted mode"
+                            " to handle larger graphs."))
+          (graph/interpreted-eager-compile graph-map)
+          (catch ExceptionInfo e
+            (handle-prismatic-exception! e)))
+        (handle-prismatic-exception! e)))))
 
 (defn instantiate
   "Given the compiled graph function, instantiate the application. Throws an exception
